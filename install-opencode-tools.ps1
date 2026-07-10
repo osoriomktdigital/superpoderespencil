@@ -18,38 +18,38 @@ param(
 )
 
 # Cores para output
-function Write-Step { param([string]$Message) Write-Host "→ $Message" -ForegroundColor Cyan }
-function Write-Success { param([string]$Message) Write-Host "✓ $Message" -ForegroundColor Green }
-function Write-Warning { param([string]$Message) Write-Host "⚠ $Message" -ForegroundColor Yellow }
-function Write-Error { param([string]$Message) Write-Host "✗ $Message" -ForegroundColor Red }
+function Write-Step { param([string]$Message) Write-Host "-> $Message" -ForegroundColor Cyan }
+function Write-Success { param([string]$Message) Write-Host "OK: $Message" -ForegroundColor Green }
+function Write-Warning { param([string]$Message) Write-Host "AVISO: $Message" -ForegroundColor Yellow }
+function Write-Error { param([string]$Message) Write-Host "ERRO: $Message" -ForegroundColor Red }
 
-# Verificar pré-requisitos
+# Verificar pre-requisitos
 function Test-Prerequisites {
-    Write-Step "Verificando pré-requisitos..."
+    Write-Step "Verificando pre-requisitos..."
     
-    # Verificar se OpenCode está instalado
+    # Verificar se OpenCode esta instalado
     if (-not (Get-Command opencode -ErrorAction SilentlyContinue)) {
-        Write-Error "OpenCode não encontrado. Instale em https://opencode.ai"
+        Write-Error "OpenCode nao encontrado. Instale em https://opencode.ai"
         exit 1
     }
     Write-Success "OpenCode encontrado"
     
-    # Verificar se git está instalado
+    # Verificar se git esta instalado
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        Write-Error "Git não encontrado. Instale em https://git-scm.com"
+        Write-Error "Git nao encontrado. Instale em https://git-scm.com"
         exit 1
     }
     Write-Success "Git encontrado"
     
-    # Verificar se npm está instalado
+    # Verificar se npm esta instalado
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Warning "npm não encontrado. Algumas funcionalidades podem não funcionar."
+        Write-Warning "npm nao encontrado. Algumas funcionalidades podem nao funcionar."
     } else {
         Write-Success "npm encontrado"
     }
 }
 
-# Criar backup do arquivo de configuração
+# Criar backup do arquivo de configuracao
 function Backup-Config {
     param([string]$ConfigPath)
     
@@ -61,178 +61,110 @@ function Backup-Config {
     }
 }
 
-# Ler configuração existente
-function Get-OpenCodeConfig {
+# Configurar Superpowers e Pencil MCP
+function Configure-Tools {
     param([string]$ConfigPath)
     
-    if (Test-Path $ConfigPath) {
-        Write-Step "Lendo configuração existente..."
-        $config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
-        Write-Success "Configuração carregada"
+    # Ler o conteudo do arquivo JSON
+    $jsonContent = Get-Content -Path $ConfigPath -Raw
+    
+    # Converter para hashtable para manipulacao mais facil
+    $config = $jsonContent | ConvertFrom-Json
+    
+    # Criar nova hashtable para a configuracao final
+    $newConfig = @{}
+    $newConfig.'$schema' = 'https://opencode.ai/config.json'
+    
+    # Adicionar plugin Superpowers se nao existir
+    $hasSuperpowers = $false
+    if ($config.plugin) {
+        foreach ($p in $config.plugin) {
+            if ($p -match "superpowers") {
+                $hasSuperpowers = $true
+                break
+            }
+        }
+    }
+    
+    if (-not $hasSuperpowers -or $Force) {
+        $pluginArray = @()
+        if ($config.plugin) {
+            $pluginArray = @($config.plugin | Where-Object { $_ -notmatch "superpowers" })
+        }
+        $pluginArray += "superpowers@git+https://github.com/obra/superpowers.git"
+        $newConfig.plugin = $pluginArray
+        Write-Success "Superpowers adicionado"
     } else {
-        Write-Step "Criando nova configuração..."
-        $config = @{
-            '$schema' = 'https://opencode.ai/config.json'
-            'plugin' = @()
-            'mcp' = @{}
+        $newConfig.plugin = @($config.plugin)
+        Write-Warning "Superpowers ja configurado"
+    }
+    
+    # Manter configuracao MCP existente ou criar nova
+    if ($config.mcp) {
+        $newConfig.mcp = $config.mcp
+    } else {
+        $newConfig.mcp = @{}
+    }
+    
+    # Verificar se Pencil MCP ja esta configurado
+    $hasPencil = $false
+    if ($newConfig.mcp.pencil) {
+        $hasPencil = $true
+    }
+    
+    if (-not $hasPencil -or $Force) {
+        # Configuracao do Pencil MCP
+        $newConfig.mcp.pencil = @{
+            'command' = @(
+                "D:\programas ssd\IA\Pencil\resources\app.asar.unpacked\out\mcp-server-windows-x64.exe"
+                "--app"
+                "desktop"
+                "--agent"
+                "openCodeCLI"
+            )
+            'enabled' = $true
+            'type' = 'local'
         }
+        Write-Success "Pencil MCP configurado"
+    } else {
+        Write-Warning "Pencil MCP ja configurado"
     }
     
-    return $config
+    # Salvar a nova configuracao
+    $newConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -Encoding UTF8
+    Write-Success "Configuracao salva"
 }
 
-# Adicionar Superpowers plugin
-function Add-Superpowers {
-    param([ref]$Config)
-    
-    Write-Step "Configurando Superpowers..."
-    
-    # Verificar se já está instalado
-    $superpowersInstalled = $Config.Value.plugin | Where-Object { $_ -match "superpowers" }
-    
-    if ($superpowersInstalled -and -not $Force) {
-        Write-Warning "Superpowers já está instalado. Use -Force para reinstalar."
-        return
-    }
-    
-    # Adicionar plugin
-    $pluginSpec = "superpowers@git+https://github.com/obra/superpowers.git"
-    
-    if (-not $Config.Value.plugin) {
-        $Config.Value.plugin = @()
-    }
-    
-    # Remover se já existir (para reinstalação)
-    $Config.Value.plugin = @($Config.Value.plugin | Where-Object { $_ -notmatch "superpowers" })
-    
-    # Adicionar nova especificação
-    $Config.Value.plugin += $pluginSpec
-    
-    Write-Success "Superpowers configurado: $pluginSpec"
-}
-
-# Configurar Pencil MCP
-function Add-PencilMCP {
-    param([ref]$Config)
-    
-    Write-Step "Configurando Pencil MCP..."
-    
-    # Verificar se já está configurado
-    if ($Config.Value.mcp -and $Config.Value.mcp.pencil -and -not $Force) {
-        Write-Warning "Pencil MCP já está configurado. Use -Force para reconfigurar."
-        return
-    }
-    
-    # Configuração do Pencil MCP
-    $pencilConfig = @{
-        'command' = @(
-            "D:\programas ssd\IA\Pencil\resources\app.asar.unpacked\out\mcp-server-windows-x64.exe"
-            "--app"
-            "desktop"
-            "--agent"
-            "openCodeCLI"
-        )
-        'enabled' = $true
-        'type' = 'local'
-    }
-    
-    # Inicializar MCP se necessário
-    if (-not $Config.Value.mcp) {
-        $Config.Value.mcp = @{}
-    }
-    
-    # Adicionar configuração
-    $Config.Value.mcp.pencil = $pencilConfig
-    
-    Write-Success "Pencil MCP configurado"
-}
-
-# Salvar configuração
-function Save-Config {
-    param([ref]$Config, [string]$ConfigPath)
-    
-    Write-Step "Salvando configuração..."
-    
-    # Garantir que o diretório existe
-    $configDir = Split-Path -Path $ConfigPath -Parent
-    if (-not (Test-Path $configDir)) {
-        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-    }
-    
-    # Salvar JSON
-    $Config.Value | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -Encoding UTF8
-    
-    Write-Success "Configuração salva em: $ConfigPath"
-}
-
-# Instalar Superpowers via npm (método alternativo para Windows)
-function Install-SuperpowersNpm {
-    Write-Step "Tentando instalar Superpowers via npm..."
-    
-    try {
-        $npmPath = "$env:USERPROFILE\.config\opencode"
-        npm install "superpowers@git+https://github.com/obra/superpowers.git" --prefix $npmPath 2>&1 | Out-Null
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Success "Superpowers instalado via npm"
-            return $true
-        }
-    } catch {
-        Write-Warning "Instalação via npm falhou: $_"
-    }
-    
-    return $false
-}
-
-# Função principal
+# Funcao principal
 function Main {
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-    Write-Host "║     Instalador de Tools para OpenCode                    ║" -ForegroundColor Magenta
-    Write-Host "║     Superpowers + Pencil MCP                              ║" -ForegroundColor Magenta
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+    Write-Host "========================================" -ForegroundColor Magenta
+    Write-Host "  Instalador de Tools para OpenCode     " -ForegroundColor Magenta
+    Write-Host "  Superpowers + Pencil MCP               " -ForegroundColor Magenta
+    Write-Host "========================================" -ForegroundColor Magenta
     Write-Host ""
     
-    # Verificar pré-requisitos
+    # Verificar pre-requisitos
     Test-Prerequisites
     
     # Criar backup
     Backup-Config -ConfigPath $OpenCodeConfigPath
     
-    # Ler configuração
-    $config = Get-OpenCodeConfig -ConfigPath $OpenCodeConfigPath
+    # Configurar ferramentas
+    Configure-Tools -ConfigPath $OpenCodeConfigPath
     
-    # Configurar Superpowers
-    Add-Superpowers -Config ([ref]$config)
-    
-    # Tentar instalação via npm no Windows
-    if (-not (Test-Path "$env:USERPROFILE\.config\opencode\node_modules\superpowers")) {
-        $npmInstalled = Install-SuperpowersNpm
-        if ($npmInstalled) {
-            # Atualizar caminho do plugin para uso local
-            $config.plugin = @($config.plugin | Where-Object { $_ -notmatch "superpowers" })
-            $config.plugin += "~/.config/opencode/node_modules/superpowers"
-        }
-    }
-    
-    # Configurar Pencil MCP
-    Add-PencilMCP -Config ([ref]$config)
-    
-    # Salvar configuração
-    Save-Config -Config ([ref]$config) -ConfigPath $OpenCodeConfigPath
-    
-    # Instruções finais
+    # Instrucoes finais
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║     Instalação Concluída!                                 ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "  Instalacao Concluida!                 " -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Próximos passos:" -ForegroundColor Yellow
-    Write-Host "  1. Reinicie o OpenCode" -ForegroundColor White
-    Write-Host "  2. Para testar Superpowers, pergunte: 'Tell me about your superpowers'" -ForegroundColor White
-    Write-Host "  3. Para testar Pencil, use comandos de design" -ForegroundColor White
+    Write-Host "Proximos passos:" -ForegroundColor Yellow
+    Write-Host "  1. Reinicie o OpenCode"
+    Write-Host "  2. Para testar Superpowers, pergunte: Tell me about your superpowers"
+    Write-Host "  3. Para testar Pencil, use comandos de design"
     Write-Host ""
-    Write-Host "Para reinstalar, execute novamente com -Force" -ForegroundColor Gray
+    Write-Host "Para reinstalar, execute novamente com -Force"
     Write-Host ""
 }
 
