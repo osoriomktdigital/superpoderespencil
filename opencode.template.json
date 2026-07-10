@@ -3,6 +3,9 @@
   "plugin": [
     "superpowers@git+https://github.com/obra/superpowers.git"
   ],
+  "instructions": [
+    "~/.config/opencode/instructions.md"
+  ],
   "mcp": {
     "pencil": {
       "command": [

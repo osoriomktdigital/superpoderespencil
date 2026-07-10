@@ -7,6 +7,7 @@
     Este script configura automaticamente:
     - Superpowers (obra/superpowers) - Framework de skills para coding agents
     - Pencil MCP - Servidor MCP para design de interfaces
+    - Instrucoes personalizadas em portugues
 
 .EXAMPLE
     .\install-opencode-tools.ps1
@@ -49,6 +50,43 @@ function Test-Prerequisites {
     }
 }
 
+# Criar instrucoes personalizadas em portugues
+function Create-Instructions {
+    Write-Step "Criando instrucoes personalizadas em portugues..."
+    
+    $instructionsPath = "$env:USERPROFILE\.config\opencode\instructions.md"
+    $instructionsDir = Split-Path -Path $instructionsPath -Parent
+    
+    # Criar diretorio se nao existir
+    if (-not (Test-Path $instructionsDir)) {
+        New-Item -ItemType Directory -Path $instructionsDir -Force | Out-Null
+    }
+    
+    # Conteudo das instrucoes
+    $instructionsContent = @"
+# Instruções Personalizadas
+
+## Idioma
+- **SEMPRE** responda em Português do Brasil
+- Todas as explicações, instruções e documentação devem ser em português
+- Código e comandos podem permanecer em inglês
+
+## Estilo de Comunicação
+- Seja claro e direto
+- Use linguagem acessível
+- Forneça exemplos práticos quando possível
+
+## Formato
+- Use Markdown para formatação
+- Organize informações em listas e tabelas quando apropriado
+- Inclua exemplos de código quando útil
+"@
+    
+    # Salvar instrucoes
+    $instructionsContent | Set-Content -Path $instructionsPath -Encoding UTF8
+    Write-Success "Instrucoes criadas em: $instructionsPath"
+}
+
 # Criar backup do arquivo de configuracao
 function Backup-Config {
     param([string]$ConfigPath)
@@ -61,7 +99,7 @@ function Backup-Config {
     }
 }
 
-# Configurar Superpowers e Pencil MCP
+# Configurar Superpowers, Pencil MCP e Instrucoes
 function Configure-Tools {
     param([string]$ConfigPath)
     
@@ -97,6 +135,31 @@ function Configure-Tools {
     } else {
         $newConfig.plugin = @($config.plugin)
         Write-Warning "Superpowers ja configurado"
+    }
+    
+    # Adicionar instrucoes personalizadas
+    $instructionsPath = "~/.config/opencode/instructions.md"
+    $hasInstructions = $false
+    if ($config.instructions) {
+        foreach ($i in $config.instructions) {
+            if ($i -match "instructions.md") {
+                $hasInstructions = $true
+                break
+            }
+        }
+    }
+    
+    if (-not $hasInstructions -or $Force) {
+        $instructionsArray = @()
+        if ($config.instructions) {
+            $instructionsArray = @($config.instructions)
+        }
+        $instructionsArray += $instructionsPath
+        $newConfig.instructions = $instructionsArray
+        Write-Success "Instrucoes personalizadas adicionadas"
+    } else {
+        $newConfig.instructions = @($config.instructions)
+        Write-Warning "Instrucoes personalizadas ja configuradas"
     }
     
     # Manter configuracao MCP existente ou criar nova
@@ -141,11 +204,15 @@ function Main {
     Write-Host "========================================" -ForegroundColor Magenta
     Write-Host "  Instalador de Tools para OpenCode     " -ForegroundColor Magenta
     Write-Host "  Superpowers + Pencil MCP               " -ForegroundColor Magenta
+    Write-Host "  + Instrucoes em Portugues              " -ForegroundColor Magenta
     Write-Host "========================================" -ForegroundColor Magenta
     Write-Host ""
     
     # Verificar pre-requisitos
     Test-Prerequisites
+    
+    # Criar instrucoes personalizadas
+    Create-Instructions
     
     # Criar backup
     Backup-Config -ConfigPath $OpenCodeConfigPath
@@ -163,6 +230,7 @@ function Main {
     Write-Host "  1. Reinicie o OpenCode"
     Write-Host "  2. Para testar Superpowers, pergunte: Tell me about your superpowers"
     Write-Host "  3. Para testar Pencil, use comandos de design"
+    Write-Host "  4. Todas as respostas serao em Portugues!"
     Write-Host ""
     Write-Host "Para reinstalar, execute novamente com -Force"
     Write-Host ""

@@ -17,6 +17,9 @@ Servidor MCP para design de interfaces que permite:
 - Exportar designs para HTML/CSS
 - Gerenciar variáveis e temas
 
+### Instruções em Português
+Configuração automática para o OpenCode responder sempre em Português do Brasil.
+
 ## Pré-requisitos
 
 - [OpenCode.ai](https://opencode.ai) instalado
@@ -29,11 +32,11 @@ Servidor MCP para design de interfaces que permite:
 
 ```powershell
 # Opção 1: Baixar e executar
-iex (irm https://raw.githubusercontent.com/SEU_USER/opencode-setup/main/install-opencode-tools.ps1)
+iex (irm https://raw.githubusercontent.com/osoriomktdigital/superpoderespencil/master/install-opencode-tools.ps1)
 
 # Opção 2: Clonar repositório
-git clone https://github.com/SEU_USER/opencode-setup.git
-cd opencode-setup
+git clone https://github.com/osoriomktdigital/superpoderespencil.git
+cd superpoderespencil
 .\install-opencode-tools.ps1
 ```
 
@@ -41,8 +44,8 @@ cd opencode-setup
 
 ```bash
 # Clonar repositório
-git clone https://github.com/SEU_USER/opencode-setup.git
-cd opencode-setup
+git clone https://github.com/osoriomktdigital/superpoderespencil.git
+cd superpoderespencil
 chmod +x install-opencode-tools.sh
 ./install-opencode-tools.sh
 ```
@@ -67,10 +70,11 @@ chmod +x install-opencode-tools.sh
 ## O que o script faz
 
 1. **Verifica pré-requisitos** - OpenCode, Git, npm
-2. **Cria backup** da configuração existente
-3. **Configura Superpowers** - Adiciona plugin ao opencode.json
-4. **Configura Pencil MCP** - Adiciona servidor MCP ao opencode.json
-5. **Salva configuração** - Atualiza o arquivo opencode.json
+2. **Cria instruções personalizadas** - Configura respostas em Português
+3. **Cria backup** da configuração existente
+4. **Configura Superpowers** - Adiciona plugin ao opencode.json
+5. **Configura Pencil MCP** - Adiciona servidor MCP ao opencode.json
+6. **Salva configuração** - Atualiza o arquivo opencode.json
 
 ## Verificação
 
@@ -87,10 +91,13 @@ Use comandos de design ou:
 use skill tool to list skills
 ```
 
+### Idioma
+Todas as respostas devem estar em Português do Brasil.
+
 ## Estrutura do Repositório
 
 ```
-opencode-setup/
+superpoderespencil/
 ├── install-opencode-tools.ps1    # Script PowerShell (Windows)
 ├── install-opencode-tools.sh     # Script Bash (Linux/macOS)
 ├── opencode.template.json        # Template de configuração
