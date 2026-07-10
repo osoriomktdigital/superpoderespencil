@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ],
+  "mcp": {
+    "pencil": {
+      "command": [
+        "D:\\programas ssd\\IA\\Pencil\\resources\\app.asar.unpacked\\out\\mcp-server-windows-x64.exe",
+        "--app",
+        "desktop",
+        "--agent",
+        "openCodeCLI"
+      ],
+      "enabled": true,
+      "type": "local"
+    }
+  }
+}
